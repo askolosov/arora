@@ -135,9 +135,10 @@ void ToolbarSearch::currentEngineChanged()
     if (!newEngine)
         return;
 
+    OpenSearchEngine *oldEngine = openSearchManager()->engine(m_currentEngine);
+
     if (m_suggestionsEnabled) {
         if (openSearchManager()->engineExists(m_currentEngine)) {
-            OpenSearchEngine *oldEngine = openSearchManager()->engine(m_currentEngine);
             disconnect(oldEngine, SIGNAL(suggestions(const QStringList &)),
                        this, SLOT(newSuggestions(const QStringList &)));
         }
@@ -146,10 +147,25 @@ void ToolbarSearch::currentEngineChanged()
                 this, SLOT(newSuggestions(const QStringList &)));
     }
 
+    if (!newEngine->networkAccessManager())
+        newEngine->setNetworkAccessManager(BrowserApplication::networkAccessManager());
+
+    if (oldEngine)
+        disconnect(oldEngine, SIGNAL(imageChanged()), this, SLOT(engineImageChanged()));
+
+    connect(newEngine, SIGNAL(imageChanged()), this, SLOT(engineImageChanged()));
+    engineImageChanged();
+
     setInactiveText(newEngine->name());
     m_currentEngine = newEngine->name();
     m_suggestions.clear();
     setupList();
+}
+
+void ToolbarSearch::engineImageChanged()
+{
+    OpenSearchEngine *engine = openSearchManager()->currentEngine();
+    searchButton()->setImage(engine->image());
 }
 
 void ToolbarSearch::completerActivated(const QModelIndex &index)
